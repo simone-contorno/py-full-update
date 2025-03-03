@@ -9,27 +9,33 @@ LOGS_FOLDER = "logs"
 LOG_FILE = None  # Will be set in main() before use
 CONFIG_FILE = "package_config.json"
 
-def create_folder():
+def create_logs_folder():
     """
     Create the logs folder if it doesn't exist.
     
     Returns:
-        bool: True if the folder exists or was successfully created
+        logs_path (str): Logs absolute path folder
     """
-    if not os.path.exists(LOGS_FOLDER):
-        os.makedirs(LOGS_FOLDER)
-    return True
+    # Get script path
+    script_path = os.path.dirname(os.path.abspath(__file__))
+    logs_path = os.path.join(script_path, LOGS_FOLDER)
+    if not os.path.exists(logs_path):
+        os.makedirs(logs_path)
+    return logs_path
 
-def get_log_file_path():
+def get_log_file_path(logs_folder_path):
     """
     Generate a timestamped log file path.
     
+    Parameters:
+        logs_folder_path (str): The absolute path to the logs folder
+
     Returns:
         str: Full path to the log file with timestamp in format 'YYYY-MM-DD_HH-MM-SS_log.txt'
     """
     current_date_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     file_name = f"{current_date_time}_log.txt"
-    return os.path.join(LOGS_FOLDER, file_name)
+    return os.path.join(logs_folder_path, file_name)
 
 def log_and_print(message, prefix=None, write_to_log=True):
     """
@@ -46,8 +52,13 @@ def log_and_print(message, prefix=None, write_to_log=True):
         print(message)
     
     if write_to_log and LOG_FILE:
-        with open(LOG_FILE, "a") as file:
-            file.write(f"\n{message}")
+        try:
+            with open(LOG_FILE, "a") as file:
+                file.write(f"\n{message}")
+        except PermissionError:
+            print("❌ Logs writing permission denied! Try running as Administrator or changing the file path.")
+        except Exception as e:
+            print(f"⚠️ Logs writing error: {e}")
 
 def load_config():
     """
@@ -100,7 +111,7 @@ def upgrade_pip():
     Returns:
         bool: True if pip was successfully upgraded or already at latest version
     """
-    log_and_print("Upgrading pip...", prefix="⬆️ ")
+    log_and_print("Upgrading pip...", prefix="⬆️")
     
     result = subprocess.run(
         [sys.executable, "-m", "pip", "install", "--upgrade", "pip"], 
@@ -291,100 +302,100 @@ def main():
     global LOG_FILE
     
     # Create logs folder
-    create_folder()
-    LOG_FILE = get_log_file_path()
+    logs_folder_path = create_logs_folder()
+    LOG_FILE = get_log_file_path(logs_folder_path)
     log_and_print("Python Package Auto-Updater", prefix="🚀")
-    log_and_print(f"Log file created at: {LOG_FILE}", prefix="📝")
+    log_and_print(f"Log file path: {LOG_FILE}", prefix="📝")
     
     # Load configuration
     blacklisted_packages, specific_versions = load_config()
     
     # Ask for starting the upgrade
     res = input("❓ Proceed with the full upgrade? (Y/n) ")
-    if res.lower() == "n":
-        log_and_print("Upgrade cancelled by user.", prefix="❌")
-        sys.exit(0)
-    
-    # Upgrade pip
-    upgrade_pip()
-    
-    # List outdated packages
-    all_outdated_packages = list_outdated_packages()
-    
-    if not all_outdated_packages:
-        log_and_print("No packages to upgrade. Exiting.", prefix="✅")
-    else:
-        # Filter out blacklisted packages
-        skipped_packages = []
-        outdated_packages = []
+    if res.lower() != "n":
+        # Upgrade pip
+        upgrade_pip()
         
-        for package in all_outdated_packages:
-            if package in blacklisted_packages:
-                skipped_packages.append(package)
-                log_and_print(f"Skipping blacklisted package: {package}", prefix="⏭️")
-            else:
-                outdated_packages.append(package)
+        # List outdated packages
+        all_outdated_packages = list_outdated_packages()
         
-        # Check if all packages are blacklisted
-        if not outdated_packages:
-            log_and_print("All outdated packages are blacklisted. Exiting.", prefix="✅")
+        if not all_outdated_packages:
+            log_and_print("No packages to upgrade. Exiting.", prefix="✅")
         else:
-            # Check dependencies before upgrading
-            conflict_lines = check_dependency_conflicts()
+            # Filter out blacklisted packages
+            skipped_packages = []
+            outdated_packages = []
             
-            if conflict_lines:
-                # Ask for upgrading anyway
-                res = input("\n❓ Would you like to attempt a full upgrade anyway? (Y/n) ")
-                if res.lower() == "n":
-                    # Ask for upgrading by skipping dependencies conflicts 
-                    res = input("❓ Would you like to upgrade while skipping packages with dependency conflicts? (Y/n) ")
-                    if res.lower() != "n":
-                        log_and_print("Skipping packages with dependency conflicts:", prefix="⚠️")
-                        
-                        # Extract package names from conflict lines
-                        conflict_packages = set()
-                        for line in conflict_lines:
-                            parts = line.split()
-                            if len(parts) >= 1:
-                                conflict_packages.add(parts[0])
-                        
-                        # Filter out packages with conflicts
-                        filtered_packages = []
-                        for package in outdated_packages:
-                            if package in conflict_packages:
-                                skipped_packages.append(package)
-                                log_and_print(f"- Skipping: {package}")
-                            else:
-                                filtered_packages.append(package)
-                        
-                        outdated_packages = filtered_packages
-                    else:
-                        log_and_print("Update cancelled due to dependency conflicts.", prefix="✅")
-
-                        # Wait for user input to terminate
-                        input("\n🔑 Press any key to exit...")
-                        sys.exit(0)
+            for package in all_outdated_packages:
+                if package in blacklisted_packages:
+                    skipped_packages.append(package)
+                    log_and_print(f"Skipping blacklisted package: {package}", prefix="⏭️")
+                else:
+                    outdated_packages.append(package)
             
+            # Check if all packages are blacklisted
             if not outdated_packages:
-                log_and_print("No packages to upgrade after filtering conflicts. Exiting.", prefix="✅")
+                log_and_print("All outdated packages are blacklisted. Exiting.", prefix="✅")
             else:
-                # Handle packages with specific versions
-                specific_version_packages = {}
-                for package in outdated_packages:
-                    if package in specific_versions:
-                        specific_version_packages[package] = specific_versions[package]
+                # Check dependencies before upgrading
+                conflict_lines = check_dependency_conflicts()
                 
-                # Upgrade packages
-                successful, failed = upgrade_packages(outdated_packages, specific_version_packages)
-                log_and_print("Update process completed!", prefix="✅")
+                if conflict_lines:
+                    # Ask for upgrading anyway
+                    res = input("\n❓ Would you like to attempt a full upgrade anyway? (Y/n) ")
+                    if res.lower() == "n":
+                        # Ask for upgrading by skipping dependencies conflicts 
+                        res = input("❓ Would you like to upgrade while skipping packages with dependency conflicts? (Y/n) ")
+                        if res.lower() != "n":
+                            log_and_print("Skipping packages with dependency conflicts:", prefix="⚠️")
+                            
+                            # Extract package names from conflict lines
+                            conflict_packages = set()
+                            for line in conflict_lines:
+                                parts = line.split()
+                                if len(parts) >= 1:
+                                    conflict_packages.add(parts[0])
+                            
+                            # Filter out packages with conflicts
+                            filtered_packages = []
+                            for package in outdated_packages:
+                                if package in conflict_packages:
+                                    skipped_packages.append(package)
+                                    log_and_print(f"- Skipping: {package}")
+                                else:
+                                    filtered_packages.append(package)
+                            
+                            outdated_packages = filtered_packages
+                        else:
+                            log_and_print("Update cancelled due to dependency conflicts.", prefix="✅")
+
+                            # Wait for user input to terminate
+                            input("\n🔑 Press any key to exit...")
+                            sys.exit(0)
                 
-                # Show summary
-                display_summary(successful, failed, skipped_packages, specific_versions)
-                
-                # Check dependencies again after updates
-                log_and_print("Rechecking dependencies after upgrade...", prefix="🔄")
-                check_dependency_conflicts()
+                if not outdated_packages:
+                    log_and_print("No packages to upgrade after filtering conflicts. Exiting.", prefix="✅")
+                else:
+                    # Handle packages with specific versions
+                    specific_version_packages = {}
+                    for package in outdated_packages:
+                        if package in specific_versions:
+                            specific_version_packages[package] = specific_versions[package]
+                    
+                    # Upgrade packages
+                    successful, failed = upgrade_packages(outdated_packages, specific_version_packages)
+                    log_and_print("Update process completed!", prefix="✅")
+                    
+                    # Show summary
+                    display_summary(successful, failed, skipped_packages, specific_versions)
+                    
+                    # Check dependencies again after updates
+                    log_and_print("Rechecking dependencies after upgrade...", prefix="🔄")
+                    check_dependency_conflicts()
     
+    else:
+        log_and_print("Upgrade cancelled by user.", prefix="❌")
+
     # Wait for user input to terminate
     input("\n🔑 Press any key to exit...")
 
