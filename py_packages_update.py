@@ -281,7 +281,7 @@ class PackageUpdater:
                 res = input(f"\n❓ Would you like to add these packages to the blacklist? (Y/n)")
                 if res.strip().lower() != "n":
                     blacklist_set.update(new_blacklist)
-                self._log_and_print(f"Blacklist packages updated.", prefix="✅")
+                    self._log_and_print(f"Blacklist packages updated.", prefix="✅")
         else:
             self._log_and_print("No dependency issues detected!", prefix="✅")
 
@@ -476,7 +476,7 @@ class PackageUpdater:
             res = input(f"\n❓ Would you like to add these packages to the blacklist? (Y/n)")
             if res.strip().lower() != "n":
                 blacklisted_packages.update(blacklist_candidates)
-            self._log_and_print(f"Blacklist packages updated.", prefix="✅")
+                self._log_and_print(f"Blacklist packages updated.", prefix="✅")
         else:
             self._log_and_print("No potential blacklist packages detected.", prefix="✅")
 
@@ -597,6 +597,7 @@ def main():
         updater.run()
     finally:
         # Wait for user input before terminating
+        updater._log_and_print("Script finished.", prefix="✅")
         input("\n🔑 Press any key to exit...")
 
 if __name__ == "__main__":
