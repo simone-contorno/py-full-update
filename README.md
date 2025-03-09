@@ -81,4 +81,4 @@ python py_packages_update.py
 - If logs cannot be written due to permission errors, the script provides troubleshooting suggestions.
 
 ## License
-This project is open-source under the MIT License.
+This project is open-source under the [MIT License](LICENSE).
