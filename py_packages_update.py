@@ -133,7 +133,7 @@ class PackageUpdater:
         Returns:
             bool: True if pip was successfully updated or already at latest version
         """
-        self._log_and_print("Upgrading pip...", prefix="⬆️")
+        self._log_and_print("Updating pip...", prefix="⬆️")
         
         result = subprocess.run(
             [sys.executable, "-m", "pip", "install", "--upgrade", "pip"], 
@@ -155,7 +155,7 @@ class PackageUpdater:
             self._log_and_print("pip updated to the latest version.", prefix="✅")
             return True
         else:
-            self._log_and_print(f"Error upgrading pip: {result.stderr}", prefix="❌")
+            self._log_and_print(f"Error updating pip: {result.stderr}", prefix="❌")
             return False
 
     def list_outdated_packages(self):
@@ -205,7 +205,7 @@ class PackageUpdater:
 
     def check_dependency_conflicts(self, blacklist_set):
         """
-        Check for existing dependency conflicts before upgrading.
+        Check for existing dependency conflicts before updating.
         
         Parameters:
             blacklist_set (set): Set of package names to ignore in conflict detection
@@ -522,7 +522,7 @@ class PackageUpdater:
             self._log_and_print("No packages to update.", prefix="✅")
             return
         
-        # Check dependencies before upgrading
+        # Check dependencies before updating
         conflict_lines, conflict_packages = self.check_dependency_conflicts(self.blacklisted_packages)
         if conflict_packages:
             # Ask for reinstalling or skipping packages with existing dependency conflicts
