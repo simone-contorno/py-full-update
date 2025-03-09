@@ -126,12 +126,12 @@ class PackageUpdater:
             self._log_and_print(f"Error loading config file: {e}", prefix="❌")
             return [], {}
 
-    def upgrade_pip(self):
+    def update_pip(self):
         """
-        Upgrade pip to the latest version.
+        Update pip to the latest version.
         
         Returns:
-            bool: True if pip was successfully upgraded or already at latest version
+            bool: True if pip was successfully updated or already at latest version
         """
         self._log_and_print("Upgrading pip...", prefix="⬆️")
         
@@ -152,7 +152,7 @@ class PackageUpdater:
             return True
         
         if result.returncode == 0:
-            self._log_and_print("pip upgraded to the latest version.", prefix="✅")
+            self._log_and_print("pip updated to the latest version.", prefix="✅")
             return True
         else:
             self._log_and_print(f"Error upgrading pip: {result.stderr}", prefix="❌")
@@ -314,23 +314,23 @@ class PackageUpdater:
             self._log_and_print(f"Error getting version for {package}: {e}", prefix="⚠️")
             return None
 
-    def upgrade_packages(self, packages, specific_versions={}):
+    def update_packages(self, packages, specific_versions={}):
         """
-        Upgrade multiple packages while handling dependencies.
+        Update multiple packages while handling dependencies.
         
         Parameters:
-            packages (list or set): Collection of package names to upgrade
+            packages (list or set): Collection of package names to update
             specific_versions (dict, optional): Dictionary mapping package names to specific versions
         
         Returns:
-            tuple: (successful_upgrades, failed_upgrades, skipped_upgrades) where:
-                - successful_upgrades is a list of successfully upgraded package names
-                - failed_upgrades is a list of tuples (package_name, error_message)
-                - skipped_upgrades is a list of packages skipped because already at specified version
+            tuple: (successful_updates, failed_updates, skipped_updates) where:
+                - successful_updates is a list of successfully updated package names
+                - failed_updates is a list of tuples (package_name, error_message)
+                - skipped_updates is a list of packages skipped because already at specified version
         """
-        successful_upgrades = []
-        failed_upgrades = []
-        skipped_upgrades = []
+        successful_updates = []
+        failed_updates = []
+        skipped_updates = []
         
         for i, package in enumerate(sorted(packages), 1):
             current_version = self.get_installed_version(package)
@@ -339,8 +339,8 @@ class PackageUpdater:
                 
                 if current_version == target_version:
                     self._log_and_print(f"Skipping {package}: Already at specified version {target_version} ({i}/{len(packages)})", prefix="⏭️")
-                    skipped_upgrades.append(package)
-                    successful_upgrades.append(package)  # Consider this successful since it's at desired version
+                    skipped_updates.append(package)
+                    successful_updates.append(package)  # Consider this successful since it's at desired version
                     continue
                     
                 package_spec = f"{package}=={target_version}"
@@ -362,46 +362,46 @@ class PackageUpdater:
                     file.write(f"\n{result.stderr}")
             
             if result.returncode == 0:
-                successful_upgrades.append(package)
-                if package in specific_versions and package not in skipped_upgrades:
+                successful_updates.append(package)
+                if package in specific_versions and package not in skipped_updates:
                     self._log_and_print(f"Successfully installed {package}=={specific_versions[package]}", prefix="✅")
                 elif package not in specific_versions:
-                    self._log_and_print(f"Successfully upgraded {package}", prefix="✅")
+                    self._log_and_print(f"Successfully updated {package}", prefix="✅")
             else:
-                failed_upgrades.append((package, result.stderr))
-                self._log_and_print(f"Failed to upgrade {package}", prefix="❌")
+                failed_updates.append((package, result.stderr))
+                self._log_and_print(f"Failed to update {package}", prefix="❌")
         
         self._log_and_print("Update process completed!", prefix="✅")
 
-        return successful_upgrades, failed_upgrades, skipped_upgrades
+        return successful_updates, failed_updates, skipped_updates
 
-    def display_summary(self, successful, failed, blacklisted, specific_versions, skipped_upgrades=None):
+    def display_summary(self, successful, failed, blacklisted, specific_versions, skipped_updates=None):
         """
-        Display a summary of upgrade results.
+        Display a summary of update results.
         
         Parameters:
-            successful (list): List of successfully upgraded package names
-            failed (list): List of tuples (package_name, error_message) for failed upgrades
+            successful (list): List of successfully updated package names
+            failed (list): List of tuples (package_name, error_message) for failed updates
             blacklisted (list or set): Collection of blacklisted package names that were skipped
             specific_versions (dict): Dict of packages installed with specific versions
-            skipped_upgrades (list, optional): List of packages skipped because already at specified version
+            skipped_updates (list, optional): List of packages skipped because already at specified version
         """
-        if skipped_upgrades is None:
-            skipped_upgrades = []
+        if skipped_updates is None:
+            skipped_updates = []
             
-        self._log_and_print("\n=== UPGRADE SUMMARY ===")
-        self._log_and_print(f"Successfully upgraded: {len(successful) - len(skipped_upgrades)}/{len(successful) + len(failed)} packages", prefix="✅")
+        self._log_and_print("\n=== UPDATE SUMMARY ===")
+        self._log_and_print(f"Successfully updated: {len(successful) - len(skipped_updates)}/{len(successful) + len(failed)} packages", prefix="✅")
         
         # Display specific versions packages successfully installed or skipped
         if specific_versions:
-            installed_specific = [pkg for pkg in successful if pkg in specific_versions and pkg not in skipped_upgrades]
+            installed_specific = [pkg for pkg in successful if pkg in specific_versions and pkg not in skipped_updates]
             if installed_specific:
                 self._log_and_print(f"Packages installed with specific versions: {len(installed_specific)}")
                 for package in installed_specific:
                     self._log_and_print(f"- {package}: {specific_versions[package]}")
                 
             
-            skipped_specific = [pkg for pkg in successful if pkg in specific_versions and pkg in skipped_upgrades]
+            skipped_specific = [pkg for pkg in successful if pkg in specific_versions and pkg in skipped_updates]
             if skipped_specific:
                 self._log_and_print(f"Packages already at specified version (skipped): {len(skipped_specific)}")
                 for package in skipped_specific:
@@ -415,9 +415,9 @@ class PackageUpdater:
                 self._log_and_print(f"- {package}")
             
         
-        # Display failed upgrades
+        # Display failed updates
         if failed:
-            self._log_and_print(f"Failed {len(failed)} upgrades:", prefix="❌")
+            self._log_and_print(f"Failed {len(failed)} updates:", prefix="❌")
             for package, error in failed:
                 self._log_and_print(f"- {package}: {error.splitlines()[0] if error else 'Unknown error'}")
 
@@ -503,14 +503,14 @@ class PackageUpdater:
         """
         Main method that orchestrates the package update process.
         """
-        # Ask for starting the upgrade
-        res = input("\n❓ Proceed with the full upgrade? (Y/n) ")
+        # Ask for starting the update
+        res = input("\n❓ Proceed with the full update? (Y/n) ")
         if res.strip().lower() == "n":
-            self._log_and_print("Upgrade cancelled by user.", prefix="❌")
+            self._log_and_print("Update cancelled by user.", prefix="❌")
             return
             
-        # Upgrade pip
-        self.upgrade_pip()
+        # Update pip
+        self.update_pip()
         
         # Get outdated packages
         outdated_packages = self.list_outdated_packages()
@@ -519,7 +519,7 @@ class PackageUpdater:
         self.filter_outdated_list(outdated_packages, self.skipped_packages, self.blacklisted_packages)
 
         if not outdated_packages:
-            self._log_and_print("No packages to upgrade.", prefix="✅")
+            self._log_and_print("No packages to update.", prefix="✅")
             return
         
         # Check dependencies before upgrading
@@ -541,7 +541,7 @@ class PackageUpdater:
                 self.filter_outdated_list(outdated_packages, self.skipped_packages, conflict_packages)
 
         if not outdated_packages:
-            self._log_and_print("No packages to upgrade after filtering dependency conflicts.", prefix="✅")
+            self._log_and_print("No packages to update after filtering dependency conflicts.", prefix="✅")
             return
         
         # Handle packages with specific versions
@@ -550,8 +550,8 @@ class PackageUpdater:
             if package in self.specific_versions:
                 specific_version_packages[package] = self.specific_versions[package]
         
-        # Upgrade packages
-        successful, failed, skipped = self.upgrade_packages(outdated_packages, specific_version_packages)
+        # Update packages
+        successful, failed, skipped = self.update_packages(outdated_packages, specific_version_packages)
         
         # Show summary
         self.display_summary(successful, failed, self.skipped_packages, self.specific_versions, skipped)
@@ -563,17 +563,17 @@ class PackageUpdater:
         # Blacklist the packages that have generated a dependency conflict
         self.check_blacklist(outdated_packages, conflict_lines, self.blacklisted_packages)
         
-        # Upgrade packages with conflict dependencies until they are solved
+        # Update packages with conflict dependencies until they are solved
         if conflict_packages:
             res = input("\n❓ Would you like to reinstall packages with existing dependency conflicts? (Y/n) ")
             while conflict_packages and res.strip().lower() != "n":
-                # Upgrade packages
+                # Update packages
                 conflict_packages_prev = set()
-                successful, failed, skipped_upgrades = self.upgrade_packages(conflict_packages, specific_version_packages)
+                successful, failed, skipped_updates = self.update_packages(conflict_packages, specific_version_packages)
                 conflict_packages_prev.update(conflict_packages)
 
                 # Show summary
-                self.display_summary(successful, failed, self.skipped_packages, self.specific_versions, skipped_upgrades)
+                self.display_summary(successful, failed, self.skipped_packages, self.specific_versions, skipped_updates)
 
                 # Rechecking 
                 conflict_lines, conflict_packages = self.check_dependency_conflicts(self.blacklisted_packages)
