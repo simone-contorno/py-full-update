@@ -499,6 +499,20 @@ class PackageUpdater:
                     json.dump(data, file, indent=4)
                 self._log_and_print("package_config.json blacklist field updated.", prefix="✅")
 
+    def get_conflict_version(self, conflict_line):
+        """
+        # Save the conflict package
+        """
+
+        split = conflict_line.split("requirement " + conflict_line.split(" ")[-2])[1].split(",")
+        version = [el for el in split if "=" in el]
+
+        if len(version) == 0: version = [el for el in split if ">" in el or "<" in el][0]
+        elif len(version) == 1: version = version[0].split("=")[-1]
+        elif len(version) == 2: version = max(version[0].split("=")[-1], version[1].split("=")[-1])
+        
+        return version
+
     def run(self):
         """
         Main method that orchestrates the package update process.
@@ -560,6 +574,9 @@ class PackageUpdater:
         conflict_lines, conflict_packages = self.check_dependency_conflicts(self.blacklisted_packages)
         conflict_packages = set(conflict_packages)
 
+        # Save the conflict package and dependency one
+        conflict_history = [[conflict_lines[i].split()[0], conflict_lines[i].split()[-2], self.get_conflict_version(conflict_lines[i])] for i in range(len(conflict_lines))]
+
         # Blacklist the packages that have generated a dependency conflict
         self.check_blacklist(outdated_packages, conflict_lines, self.blacklisted_packages)
         
@@ -584,7 +601,22 @@ class PackageUpdater:
                 self.filter_outdated_list(conflict_packages, self.skipped_packages, self.blacklisted_packages)
                 if conflict_packages:
                     res = input("\n❓ Would you like to reinstall packages with existing dependency conflicts? (Y/n) ")
-        
+
+                # Update the conflict history
+                new_conflict_history = [[conflict_lines[i].split()[0], conflict_lines[i].split()[-2], self.get_conflict_version(conflict_lines[i])] for i in range(len(conflict_lines))]
+                for history in new_conflict_history:
+                    if history not in conflict_history:
+                        conflict_history.append(history)
+
+        # Save the conflict history
+        if not os.path.exists("conflict_history"):
+            os.makedirs("conflict_history")
+
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        conflict_history_file = current_time + "_conflict_history.json"
+        with open(os.path.join("conflict_history", conflict_history_file), "w") as file:
+            json.dump(conflict_history, file, indent=4)
+
         # Update the blacklist field in the configuration JSON file
         self.update_blacklist_in_config()
 
