@@ -3,6 +3,7 @@ import datetime
 import os
 import sys
 import json
+from collections import defaultdict
 
 class PackageUpdater:
     """
@@ -19,6 +20,7 @@ class PackageUpdater:
         self.logs_folder_path = self._create_logs_folder()
         self.log_file_path = self._get_log_file_path(self.logs_folder_path)
         self.conflict_dependency_memory = set()
+        self.conflict_history = []
         
         # Display startup message
         self._log_and_print("Python Package Auto-Updater", prefix="🚀")
@@ -285,6 +287,12 @@ class PackageUpdater:
         else:
             self._log_and_print("No dependency issues detected!", prefix="✅")
 
+        # Update the conflict history
+        new_conflict_history = [[conflict_lines[i].split()[0], conflict_lines[i].split()[-2], self.get_conflict_version(conflict_lines[i])] for i in range(len(conflict_lines))]
+        for history in new_conflict_history:
+            if history not in self.conflict_history:
+                self.conflict_history.append(history)
+
         return conflict_lines, sorted(conflict_packages)
 
     def get_installed_version(self, package):
@@ -407,14 +415,12 @@ class PackageUpdater:
                 for package in skipped_specific:
                     self._log_and_print(f"- {package}: {specific_versions[package]}")
                 
-        
         # Display skipped blacklist packages
         if blacklisted:
             self._log_and_print(f"Skipped {len(blacklisted)} blacklisted packages: ")
             for package in blacklisted:
                 self._log_and_print(f"- {package}")
             
-        
         # Display failed updates
         if failed:
             self._log_and_print(f"Failed {len(failed)} updates:", prefix="❌")
@@ -513,6 +519,39 @@ class PackageUpdater:
         
         return version
 
+    def generate_requirements(self, conflict_history_file):
+        """
+        Generate a requirements.txt file for a virtual environment.
+        """
+        path = ".\\venv\\requirements\\"
+        while True:
+            env_name = input("📝 Enter the name of the virtual environment ('none' to quit): ")
+            if env_name.lower() == 'none':
+                self._log_and_print("Generation cancelled by user.", prefix="❌")
+                return
+
+            file_name = f"requirements_{env_name}.txt"
+            file_path = os.path.join(path, file_name)
+            if os.path.exists(file_path):
+                res = input(f"\n❓ The file '{file_name}' already exists. Do you want to overwrite it? (Y/n) ")
+                if res.lower() != "n":
+                    break
+            else:
+                break
+
+        # Extract info from JSON file and create a requirements.txt file
+        with open(os.path.join("conflict_history", conflict_history_file), 'r') as file:
+            data = json.load(file)
+
+        with open(file_path, 'w') as file:
+            for item in data.items():
+                pkg, infos = item
+                for info in infos:
+                    line = f"{info['dependency']}=={info['version']}\n"
+                    file.write(line)
+
+        self._log_and_print(f"Written '{file_name}' file.", prefix="📝")
+            
     def run(self):
         """
         Main method that orchestrates the package update process.
@@ -574,9 +613,6 @@ class PackageUpdater:
         conflict_lines, conflict_packages = self.check_dependency_conflicts(self.blacklisted_packages)
         conflict_packages = set(conflict_packages)
 
-        # Save the conflict package and dependency one
-        conflict_history = [[conflict_lines[i].split()[0], conflict_lines[i].split()[-2], self.get_conflict_version(conflict_lines[i])] for i in range(len(conflict_lines))]
-
         # Blacklist the packages that have generated a dependency conflict
         self.check_blacklist(outdated_packages, conflict_lines, self.blacklisted_packages)
         
@@ -602,21 +638,6 @@ class PackageUpdater:
                 if conflict_packages:
                     res = input("\n❓ Would you like to reinstall packages with existing dependency conflicts? (Y/n) ")
 
-                # Update the conflict history
-                new_conflict_history = [[conflict_lines[i].split()[0], conflict_lines[i].split()[-2], self.get_conflict_version(conflict_lines[i])] for i in range(len(conflict_lines))]
-                for history in new_conflict_history:
-                    if history not in conflict_history:
-                        conflict_history.append(history)
-
-        # Save the conflict history
-        if not os.path.exists("conflict_history"):
-            os.makedirs("conflict_history")
-
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        conflict_history_file = current_time + "_conflict_history.json"
-        with open(os.path.join("conflict_history", conflict_history_file), "w") as file:
-            json.dump(conflict_history, file, indent=4)
-
         # Update the blacklist field in the configuration JSON file
         self.update_blacklist_in_config()
 
@@ -627,10 +648,35 @@ def main():
     updater = PackageUpdater()
     try:
         updater.run()
-    finally:
+        # Save the conflict history
+        if not os.path.exists("conflict_history"):
+            os.makedirs("conflict_history")
+
+        # Using defaultdict to group elements
+        conflict_history = defaultdict(list)
+
+        for pkg, dep, ver in updater.conflict_history:
+            conflict_history[pkg].append({
+                "dependency": dep,
+                "version": ver
+            })
+
+        current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        conflict_history_file = current_time + "_conflict_history.json"
+        with open(os.path.join("conflict_history", conflict_history_file), "w") as file:
+            json.dump(conflict_history, file, indent=2)
+
+        # Generate a requirements.txt file
+        res = input("\n❓ Would you like to generate a requirements.txt file from the conflict packages? (Y/n) ")
+        if res.strip().lower()!= "n":
+            updater.generate_requirements(conflict_history_file)
+
         # Wait for user input before terminating
         updater._log_and_print("Script finished.", prefix="✅")
         input("\n🔑 Press any key to exit...")
+
+    except KeyboardInterrupt:
+        updater._log_and_print("\nScript terminated by user.", prefix="❌")
 
 if __name__ == "__main__":
     main()
