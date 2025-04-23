@@ -3,7 +3,9 @@ import subprocess
 import sys
 import venv
 
-FOLDER = "venv"
+# Get current folder absolute path
+PARENT_FOLDER = os.path.abspath(os.path.dirname(__file__))
+FOLDER = PARENT_FOLDER + "\\venv"
 ENV = FOLDER + "\\environments"
 REQ = FOLDER + "\\requirements"
 
