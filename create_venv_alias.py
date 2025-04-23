@@ -29,7 +29,7 @@ def create_venv_alias(venv_name=None, base_dir=None):
         str: Path to the created alias file, or None if no alias was created
     """
     # Use provided base directory or get the current directory
-    current_directory = base_dir if base_dir else os.getcwd()
+    current_directory = os.path.abspath(os.path.dirname(__file__))
     
     # Path to the folder containing all virtual environments
     venv_root = os.path.join(current_directory, "venv", "environments")
