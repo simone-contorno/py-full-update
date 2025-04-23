@@ -1,6 +1,30 @@
 {
     "blacklist": [
+        "pymilvus",
+        "protobuf",
+        "google-ai-generativelanguage",
+        "ml-dtypes",
+        "numpy",
+        "pydantic_core",
+        "portalocker",
+        "SQLAlchemy",
+        "pyasn1",
+        "lark",
+        "importlib_metadata",
+        "tensorboard",
+        "pefile",
+        "sympy",
+        "torch",
+        "torchvision",
+        "torchdata",
+        "rich",
+        "ipywidgets",
+        "thinc",
+        "pyee",
+        "PyMuPDF",
+        "Werkzeug",
+        "Flask",
+        "tensorflow-intel"
     ],
-    "specific_versions": {
-    }
+    "specific_versions": {}
 }

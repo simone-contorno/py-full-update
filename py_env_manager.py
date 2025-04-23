@@ -8,7 +8,7 @@ ENV = FOLDER + "\\environments"
 REQ = FOLDER + "\\requirements"
 
 def create_virtualenv(env_name):
-    """Create a new virtual environment."""
+    """Create a new virtual environment and generate a bat alias for it."""
 
     env_path = os.path.join(ENV, env_name)
     if os.path.exists(env_path):
@@ -17,6 +17,17 @@ def create_virtualenv(env_name):
         print(f"Creating the virtual environment '{env_name}'...")
         venv.create(env_path, with_pip=True)
         print(f"The environment '{env_name}' has been successfully created!")
+        
+        # Create a bat alias for the new environment
+        try:
+            from create_venv_alias import create_venv_alias
+            alias_path = create_venv_alias(env_name, os.getcwd())
+            if alias_path:
+                print(f"Created activation alias: {os.path.basename(alias_path)}")
+        except ImportError:
+            print("Note: Could not create bat alias (create_venv_alias.py not found)")
+        except Exception as e:
+            print(f"Note: Could not create bat alias: {str(e)}")
 
 def activate_virtualenv(env_name):
     """Generate the command to activate a virtual environment."""
@@ -117,8 +128,9 @@ def generate_requirements(env_name):
 
 
 def delete_virtualenv(env_name):
-    """Delete an existing virtual environment."""
+    """Delete an existing virtual environment and its corresponding bat alias file if it exists."""
 
+    # Check and delete the virtual environment
     env_path = os.path.join(ENV, env_name)
     if os.path.exists(env_path):
         print(f"Deleting the virtual environment '{env_name}'...")
@@ -128,6 +140,13 @@ def delete_virtualenv(env_name):
         else:  # macOS/Linux
             subprocess.run(['rm', '-rf', env_path], check=True)
         print(f"The virtual environment '{env_name}' has been deleted.")
+        
+        # Check and delete the corresponding bat file if it exists
+        bat_dir = os.path.join(os.getcwd(), "bat")
+        bat_file = os.path.join(bat_dir, f"activate_{env_name}.bat")
+        if os.path.exists(bat_file):
+            os.remove(bat_file)
+            print(f"The corresponding bat alias file for '{env_name}' has been deleted.")
     else:
         print(f"The virtual environment '{env_name}' does not exist.")
 
