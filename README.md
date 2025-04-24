@@ -1,4 +1,4 @@
-# Python Full Update
+# Python Manager
 
 ## Overview
 This project provides tools for managing Python packages and virtual environments. It includes scripts for automating package updates and comprehensive virtual environment management with easy creation, activation, and dependency handling.
