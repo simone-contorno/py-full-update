@@ -288,7 +288,11 @@ class PackageUpdater:
             self._log_and_print("No dependency issues detected!", prefix="✅")
 
         # Update the conflict history
-        new_conflict_history = [[conflict_lines[i].split()[0], conflict_lines[i].split()[-2], self.get_conflict_version(conflict_lines[i])] for i in range(len(conflict_lines))]
+        new_conflict_history = [
+            [conflict_lines[i].split()[0], conflict_lines[i].split()[-2], self.get_conflict_version(conflict_lines[i])]
+            for i in range(len(conflict_lines))
+            if self.get_conflict_version(conflict_lines[i]) is not None and self.get_conflict_version(conflict_lines[i]) != []
+        ]
         for history in new_conflict_history:
             if history not in self.conflict_history:
                 self.conflict_history.append(history)
@@ -510,13 +514,53 @@ class PackageUpdater:
         # Save the conflict package
         """
 
-        split = conflict_line.split("requirement " + conflict_line.split(" ")[-2])[1].split(",")
+        conflict_line = conflict_line.lower()
+        split = conflict_line.split("requirement " + conflict_line.split(" ")[-2])
+
+        # Remove python version spec.
+        if len(split) > 0:
+            for el in split:
+                if "python_version" in el or "sys_platform" in el:
+                    split.remove(el)
+
+        if len(split) == 0:
+            return None
+
+        # Check for specific versions
+        if len(split) > 1:
+            split = split[1].split(",")
         version = [el for el in split if "=" in el]
 
-        if len(version) == 0: version = [el for el in split if ">" in el or "<" in el][0]
-        elif len(version) == 1: version = version[0].split("=")[-1]
-        elif len(version) == 2: version = max(version[0].split("=")[-1], version[1].split("=")[-1])
-        
+        # Remove incompatible versions
+        if len(version) > 0:
+            for el in version:
+                if "!=" in el:
+                    version.remove(el)
+
+        if len(version) == 0: 
+            version = [el for el in split if ">" in el or "<" in el]
+            if len(version) > 0: version = version[0]
+
+        elif len(version) == 1: 
+            version = version[0].split("=")
+            if len(version) > 0: version = version[-1]
+
+        elif len(version) == 2:
+            if len(version[0].split("=")) > 0:
+                version_0 = version[0].split("=")[-1]
+            else:
+                version_0 = None
+
+            if len(version[1].split("=")) > 0:
+                version_1 = version[1].split("=")[-1]
+            else:
+                version_1 = None
+
+            if version_0 is not None and version_1 is not None:
+                version = max(version_0, version_1)
+            else:
+                version = None
+
         return version
 
     def generate_requirements(self, conflict_history_file):
@@ -661,15 +705,16 @@ def main():
                 "version": ver
             })
 
-        current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        conflict_history_file = current_time + "_conflict_history.json"
-        with open(os.path.join("conflict_history", conflict_history_file), "w") as file:
-            json.dump(conflict_history, file, indent=2)
+        if len(conflict_history) > 0:
+            current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            conflict_history_file = current_time + "_conflict_history.json"
+            with open(os.path.join("conflict_history", conflict_history_file), "w") as file:
+                json.dump(conflict_history, file, indent=2)
 
-        # Generate a requirements.txt file
-        res = input("\n❓ Would you like to generate a requirements.txt file from the conflict packages? (Y/n) ")
-        if res.strip().lower()!= "n":
-            updater.generate_requirements(conflict_history_file)
+            # Generate a requirements.txt file
+            res = input("\n❓ Would you like to generate a requirements.txt file from the conflict packages? (Y/n) ")
+            if res.strip().lower()!= "n":
+                updater.generate_requirements(conflict_history_file)
 
         # Wait for user input before terminating
         updater._log_and_print("Script finished.", prefix="✅")

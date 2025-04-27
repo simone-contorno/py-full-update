@@ -1,0 +1,15 @@
+# Core dependencies for py-manager
+# These are the standard libraries and packages required to run the scripts
+
+# Standard libraries that come with Python
+# No installation needed for these, but listed for documentation:
+# - os
+# - sys
+# - json
+# - datetime
+# - re
+# - collections
+# - subprocess (built-in on Python 3.x)
+
+# External packages that may need installation
+venv>=3.0.0
