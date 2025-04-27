@@ -1,7 +1,13 @@
 # Python Manager
 
 ## Overview
-This project provides tools for managing Python packages and virtual environments. It includes scripts for automating package updates and comprehensive virtual environment management with easy creation, activation, and dependency handling.
+Py-Manager is a comprehensive toolkit for Python development environment management. It provides two main utilities:
+
+1. **Python Package Manager** - Automates the process of updating Python packages while intelligently handling dependency conflicts, maintaining logs, and respecting package blacklists.
+
+2. **Virtual Environment Manager** - Simplifies the creation, activation, and management of multiple Python virtual environments with tools for generating requirements files and installing dependencies across environments.
+
+Designed to streamline Python development workflows, this project helps maintain clean, organized, and conflict-free Python environments.
 
 ## Features
 
@@ -26,22 +32,31 @@ This project provides tools for managing Python packages and virtual environment
 - Python 3.x
 - `pip` (installed by default with Python)
 
+All dependencies are listed in the `requirements.txt` file. Most are standard libraries included with Python.
+
 ## Installation
 Clone this repository and navigate to the directory:
 
 ```bash
-git clone https://github.com/simone-contorno/py-full-update
-cd py-full-update
+git clone https://github.com/simone-contorno/py-manager
+cd py-manager
+```
+
+No additional installation is required as the project primarily uses standard Python libraries. If needed, you can install the few external dependencies with:
+
+```bash
+pip install -r requirements.txt
 ```
 
 ## Project Structure
 
 ```
-py-full-update/
+py-manager/
 ├── py_packages_update.py  # Package update script
 ├── py_env_manager.py      # Virtual environment management script
 ├── create_venv_alias.py   # Script to create batch file aliases for environments
 ├── package_config.json    # Configuration for package updates
+├── requirements.txt       # Project dependencies
 ├── venv/                  # Directory containing all virtual environments
 │   ├── environments/      # Individual virtual environments
 │   └── requirements/      # Requirements files for each environment
